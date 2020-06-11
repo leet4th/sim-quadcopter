@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time as tm
 
 # Models
-from rigidBodyDynamics import rigidBodyDynamics, motor, motor2body
+from simModels import rigidBodyDynamics, motor, motor2body
 
 # Simulation time
 dt = 0.001

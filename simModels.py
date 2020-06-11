@@ -1,8 +1,6 @@
 import numpy as np
-from transform import quatRot, skew, dQuat, quatConj, quatNormalize
+from sim.transform import quatRot, skew, dQuat, quatConj, quatNormalize
 import scipy.integrate as integrate
-
-import IPython
 
 class rigidBodyDynamics:
 	def __init__(self, pos_L, vel_B, qToBfromL, wb, mass, inertia, gravity):
@@ -185,7 +183,6 @@ class motor2body:
 		self.motorList = motorList
 
 	def getBodyForceMoment(self):
-		#IPython.embed()
 		Fb = np.zeros(3)
 		Mb = np.zeros(3)
 		for motor_k in self.motorList:
