@@ -1,17 +1,18 @@
 import numpy as np
-from solver import setupTime, saveData, updateModels, getModelOutput
-from postProcessing import post_calc
-from plots import plotData, plotData3d, plotMotorData
+
 import matplotlib.pyplot as plt
 import time as tm
 
 # Models
-from simModels import rigidBodyDynamics, motor, motor2body
+from sim.simModels import rigidBodyDynamics, motor, motor2body
+from sim.utilities import setupTime, saveData, updateModels, getModelOutput
+from sim.postProcessing import post_calc
+from sim.plots import plotData, plotData3d, plotMotorData
 
 # Simulation time
 dt = 0.001
 tStart = 0
-tEnd = 10
+tEnd = 1
 time,dt,N = setupTime(tStart,tEnd,dt)
 
 """
