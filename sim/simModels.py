@@ -2,6 +2,8 @@ import numpy as np
 from sim.transform import quatRot, skew, dQuat, quatConj, quatNormalize
 import scipy.integrate as integrate
 
+np.random.seed(123456789)   # repeatable results
+
 class rigidBodyDynamics:
 	def __init__(self, pos_L, vel_B, qToBfromL, wb, mass, inertia, gravity):
 		# Constants
@@ -193,3 +195,44 @@ class motor2body:
 			Mb += np.cross(motor_loc, motor_force)
 			Mb += motor_torque
 		return Fb, Mb
+		
+class mpu9250:
+	def __init__(self, rbodyModel, accel_3sig, gyro_3sig, mag_3sig):
+	
+		self.rbodyModel = rbodyModel
+		self.accel_sig = accel_3sig / 3
+		self.gyro_sig = gyro_3sig / 3
+		self.mag_sig = mag_3sig / 3
+		
+		# Not setup for mag yet. Need to input earth model
+		self.mx = 0.0
+		self.my = 0.0
+		self.mz = 0.0
+		
+		self.read()
+	
+	def update(self):
+		accel = self.rbodyModel.dstate[3:6]
+		wb = self.rbodyModel.state[10:13]
+		
+		noise_accel = np.random.randn() * self.accel_sig
+		noise_gyro = np.random.randn() * self.gyro_sig
+		noise_mag = np.random.randn() * self.mag_sig
+		
+		self.ax = accel[0] + noise_accel
+		self.ay = accel[1] + noise_accel
+		self.az = accel[2] + noise_accel
+		self.gx = wb[0] + noise_accel
+		self.gy = wb[1] + noise_accel
+		self.gz = wb[2] + noise_accel
+		
+	def read(self):
+		self.update()
+		output = [self.ax, self.ay, self.az, self.gx, self.gy, self.gz, self.mx, self.my, self.mz]
+
+		return output
+		
+		
+
+
+	
