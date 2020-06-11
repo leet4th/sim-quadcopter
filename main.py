@@ -11,7 +11,7 @@ from rigidBodyDynamics import rigidBodyDynamics, motor, motor2body
 # Simulation time
 dt = 0.001
 tStart = 0
-tEnd = 50
+tEnd = 10
 time,dt,N = setupTime(tStart,tEnd,dt)
 
 """
