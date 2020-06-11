@@ -209,7 +209,7 @@ class mpu9250:
 		self.my = 0.0
 		self.mz = 0.0
 		
-		self.read()
+		self.update()
 	
 	def update(self):
 		accel = self.rbodyModel.dstate[3:6]
