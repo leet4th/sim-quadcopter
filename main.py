@@ -1,17 +1,20 @@
 import numpy as np
-from solver import setupTime, saveData, updateModels, getModelOutput
-from postProcessing import post_calc
-from plots import plotData, plotData3d, plotMotorData
-import matplotlib.pyplot as plt
 import time as tm
+import matplotlib.pyplot as plt
 
-# Models
-from rigidBodyDynamics import rigidBodyDynamics, motor, motor2body
+# Sim
+from sim.simModels import rigidBodyDynamics, motor, motor2body, mpu9250
+from sim.utilities import setupTime, saveData, updateModels, getModelOutput
+from sim.postProcessing import post_calc
+from sim.plots import plotData, plotData3d, plotMotorData
+
+# Flt
+from flt.control import quadControl
 
 # Simulation time
 dt = 0.001
 tStart = 0
-tEnd = 10
+tEnd = 1
 time,dt,N = setupTime(tStart,tEnd,dt)
 
 """
@@ -54,6 +57,13 @@ motor3_vec = np.array([0,0,-1]) # Motor 3 Pointing vector in body frame
 motor4_vec = np.array([0,0,-1]) # Motor 4 Pointing vector in body frame
 
 """
+mpu9250 (imu)
+"""
+accel_3sig = 0.1
+gyro_3sig = 0.1
+mag_3sig = 0.1
+
+"""
 Initialize models
 """
 # Initialize motors
@@ -63,8 +73,10 @@ motor3 = motor(motor_w, motor3_dir, motor_Kf, motor_Kt, motor_tau, motor3_loc, m
 motor4 = motor(motor_w, motor4_dir, motor_Kf, motor_Kt, motor_tau, motor4_loc, motor4_vec)
 # Motor mapping in body frame
 motorMap = motor2body([motor1, motor2, motor3, motor4])
-# Initialize rbody last
+# Initialize rbody
 rbody = rigidBodyDynamics( pos_L, vel_B, qToBfromL, wb, mass, inertia, gravity)
+# Initialize imu
+imu = mpu9250(rbody, accel_3sig, gyro_3sig, mag_3sig)
 
 """
 Control
