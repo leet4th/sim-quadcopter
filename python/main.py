@@ -113,7 +113,7 @@ Run Simulation
 tic = tm.perf_counter()
 N_update = 10
 k_update = 1
-print('Starting simulation...')
+print('\n\nStarting simulation...')
 for k,tk in enumerate(time):
 
 	pos_L       = np.array( rbody.state[ 0:3 ] )
@@ -152,7 +152,7 @@ data = getModelOutput(models, time)
 data = post_calc(data)
 print('\tSim 100% Complete')
 toc = tm.perf_counter()
-print(f"Completed in {toc-tic} seconds")
+print(f"Completed in {toc-tic} seconds\n\n")
 
 
 
