@@ -26,7 +26,7 @@ class QuadControl:
         
         # Position loop
         posErr = pos_L_cmd - pos_L
-        cmdPos = 10*posErr[2] + (523*523) + 5*(0- vel_L[2])
+        cmdPos = 0 
         
         # Attitude loop
         self.qErr = quatMult(qCmd, qNav)
@@ -37,7 +37,6 @@ class QuadControl:
         
         # Transform from command frame to motor frame
         #self.cmdClipped = np.clip(self.cmd,None,None)
-        
         
         #self.wCmd = self.mixerCmd2Motor.dot(self.cmdClipped)
         self.wCmd = self.mixerCmd2Motor.dot(self.cmd)

@@ -1,7 +1,6 @@
 
 import numpy as np
 import time as tm
-import cProfile
 import matplotlib.pyplot as plt
 
 from animation import trajectory_animation
@@ -35,7 +34,7 @@ def sim(t,dt,quad):
 # Setup time
 tStart = 0.
 dt = 0.005
-tEnd = 500.
+tEnd = 50.
    
 # Setup models
 quad = Quadcopter(use_actuator_model=True)
