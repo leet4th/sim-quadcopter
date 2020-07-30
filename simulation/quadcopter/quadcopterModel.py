@@ -13,7 +13,7 @@ class Quadcopter:
         self.use_actuator_model = use_actuator_model
     
         # Initalize model parameters
-        self.data, self.state, self.wmHover = init_model()
+        self.data, self.state, self.wmHover, self.wmMin, self.wmMax = init_model()
         
         # Initial states
         self.pos_B = self.state[0:3]
@@ -47,9 +47,8 @@ class Quadcopter:
         
             
     def calc_force_moment(self):
-        self.mThrust = self.data['kF']*self.wm#*self.wm
-        self.mTorque = self.data['kM']*self.wm#*self.wm
-        
+        self.mThrust = self.data['kF']*self.wm*self.wm
+        self.mTorque = self.data['kM']*self.wm*self.wm        
         
         
     def calc_dstate(self, t, state, cmd):
@@ -78,7 +77,7 @@ class Quadcopter:
         
         if self.use_actuator_model:
             # Calculate motor force and moment
-            self.wm = cmd
+            self.wm = (self.wmMax-self.wmMin)*cmd + self.wmMin
             self.calc_force_moment()
             F1, F2, F3, F4 = self.mThrust
             M1, M2, M3, M4 = self.mTorque

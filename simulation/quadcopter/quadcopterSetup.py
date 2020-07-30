@@ -20,15 +20,17 @@ def init_model():
     
     # Initial State vector
     state, cmd_hover = init_state(data)
+    wmMin = 0.2*523
+    wmMax = 1.5*523
     
-    return data, state, cmd_hover
+    return data, state, cmd_hover, wmMin, wmMax
     
 def init_state(data):
 
     wmHover = np.sqrt(data['mass']*data['g']/(4*data['kF']))
     
     # Yaw, Pitch, Roll
-    euler321 = np.array([0,45,45], dtype='float') * DEG2RAD
+    euler321 = np.array([5,-15,45], dtype='float') * DEG2RAD
     qToBfromL = euler3212quat(euler321)
     
     pos_L = np.array([0,0,0], dtype='float')
@@ -41,8 +43,8 @@ def init_state(data):
     state[0:3]  = pos_B[:]
     state[3:7]  = qToBfromL[:]
     state[7:10] = vel_B[:]
-    state[10]   = 0. # wbx
-    state[11]   = 0. # wby
+    state[10]   = 0 * DEG2RAD # wbx
+    state[11]   = 0 * DEG2RAD # wby
     state[12]   = 0 * DEG2RAD # wbz  
     
     return state, wmHover
