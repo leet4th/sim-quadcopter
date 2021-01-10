@@ -9,46 +9,28 @@ from plot_sim import generate_plots
 from quadcopter.quadcopterModel import Quadcopter
 from navigation.BasicNavigation import BasicNavigation
 from quadControl.quadControl import QuadControl
+from quadControl.quadGains import controlGains
 
-# Main sim loop
-def sim(t,dt,quad):
-    # Nav
-    nav.update()
-       
-    # Trajectory
-    posCmd = np.array([10,10,-10])
-    
-    # Control
-    wCmd = 1.5*wCmd_hover
-    ctrl.update(nav)
-    #cmd = np.hstack(([0,0,-quad.data['mass']*quad.data['g']],ctrl.cmd))
-    #cmd = np.hstack(([0,
-    #                  0,
-    #                  10*(-5 - nav.pos_L[2]) + 1*(0 - nav.vel_L[2]) - quad.data['mass']*quad.data['g'] ],
-    #                  ctrl.cmd))
-    #print(ctrl.cmd)
-    
-    # Update quadcopter model
-    quad.update(t,dt,ctrl.wCmd)
+class SingleWaypoint:
+    def __init__(self, waypoint_posL=np.zeros(3)):
+        self.posL_sp = waypoint_posL
+
    
 # Setup time
 tStart = 0.
 dt = 0.005
-tEnd = 50.
+tEnd = 100
    
 # Setup models
 quad = Quadcopter(use_actuator_model=True)
 wCmd_hover = np.array([quad.wmHover]*4)
 
+des = SingleWaypoint()
+
 nav = BasicNavigation(quad)
 
-#                            T, Mx, My, Mz
-mixerCmd2Motor = np.array([[ 1,  0,  1, -1], # Motor 1
-                           [ 1, -1,  0,  1], # Motor 2
-                           [ 1,  0, -1, -1], # Motor 3
-                           [ 1,  1,  0,  1]  # Motor 4
-                           ])
-ctrl = QuadControl(mixerCmd2Motor)
+dt_control = 0.01 # sec                           
+ctrl = QuadControl(dt_control, controlGains)
 
 # Setup Output dict structure
 output = {}
@@ -65,6 +47,29 @@ output['velDot_B'] = []
 output['velDot_L'] = []
 output['qDot'] = []
 output['wbDot'] = []
+output['quat_err'] = []
+
+# Main sim loop
+tControlPrev = -999.0
+def sim(t, quad, dt_sim, dt_control):
+    global tControlPrev
+
+    # Nav
+    nav.update()
+    
+    # Des
+    if t > 5:
+        des.posL_sp[2] = -100
+    
+    # Control
+    if (t - tControlPrev) > dt_control:
+        ctrl.update(nav, des)
+        tControlPrev = t
+        
+    #ctrl.wCmd = np.zeros(4)
+    # Update quadcopter model
+    #ctrl.wCmd = np.array([1,1,1,1])*0.7
+    quad.update(t,dt_sim,ctrl.wCmd)
 
 # Run Sim
 tic = tm.perf_counter()
@@ -74,9 +79,10 @@ nPrint = 10
 print('\nRunning sim...')
 while tk <= tEnd:
     
-    sim(tk, dt, quad)
+    sim(tk, quad, dt, dt_control)
     
     # Store output
+    #sim
     output['time'].append(tk)
     output['pos_B'].append(quad.pos_B)
     output['pos_L'].append(quad.pos_L)
@@ -90,6 +96,8 @@ while tk <= tEnd:
     output['velDot_L'].append(quad.velDot_L)
     output['qDot'].append(quad.qDot)
     output['wbDot'].append(quad.wbDot)
+    #control
+    output['quat_err'].append(ctrl.quat_err)
     
     # print status
     if tk/tEnd > kPrint/nPrint:
@@ -103,12 +111,17 @@ for var in output.keys():
     output[var] = np.array(output[var]).T
     if len(output[var].shape) == 1:
         output[var] = np.expand_dims(output[var],axis=0)
+# Save key constants
+output['wmMin'] = quad.wmMin
+output['wmMax'] = quad.wmMax
+        
+        
 print(f'\t100% complete')
 toc = tm.perf_counter()
 print(f"Completed in {toc-tic} seconds\n\n")
 
 generate_plots(output)
-#trajectory_animation(output, dt, type='point_mass')
+trajectory_animation(output, dt, type='point_mass')
 
 
 

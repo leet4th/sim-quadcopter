@@ -15,6 +15,9 @@ def generate_plots(output):
     ypr = output['ypr']
     wb = output['wb']
     wm = output['wm']
+    wmMin = output['wmMin']
+    wmMax = output['wmMax']
+    quat_err = output['quat_err']
     
     fig,ax = plt.subplots(2,2,sharex=True)
     ax[0,0].plot(time, pos_L[0,:], label='x') 
@@ -79,6 +82,17 @@ def generate_plots(output):
     ax.grid()
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Motor Speed')    
+    ax.set_title(f'wmMin = {int(wmMin)}, wmMax = {int(wmMax)}')
+    
+    fig,ax = plt.subplots(1,1,sharex=True)
+    ax.plot(time, quat_err[0], label='qw')
+    ax.plot(time, quat_err[1], label='qx')
+    ax.plot(time, quat_err[2], label='qy')
+    ax.plot(time, quat_err[3], label='qz')
+    ax.legend()
+    ax.grid()
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('quat_err')      
     
     
     
