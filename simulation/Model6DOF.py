@@ -11,6 +11,9 @@ from transform import *
 
 from IPython import embed as breakpoint
 
+RAD2DEG = 180.0/np.pi
+DEG2RAD = 1/RAD2DEG
+
 
 class Model6DOF():
     def __init__(self, dt):
@@ -201,11 +204,13 @@ class ModelQuadcopter(Model6DOF):
 
         # Measurement Model Parameters
         self.gyroBias   = np.array([0,0,0])
-        self.gyroNoise  = np.array([1.,1.,1.]) * (1.0e-1)**2
+        self.gyroNoise  = np.array([1.,1.,1.]) * np.sqrt(30.0*DEG2RAD)/3
         self.accelBias  = np.array([0,0,0])
-        self.accelNoise = np.array([1.,1.,1.]) * (1.0e-1)**2
+        self.accelNoise = np.array([1.,1.,1.]) * np.sqrt(0.4)/3
         self.magBias    = np.array([0,0,0])
-        self.magNoise   = np.array([1.,1.,1.]) * (1.0e-1)**2
+        self.magNoise   = np.array([1.,1.,1.]) * np.sqrt(0.005)/3
+        self.gpsBias    = np.array([0,0,0])
+        self.gpsNoise   = np.array([1.,1.,1.]) * np.sqrt(1.8)/3
 
         # Model6DOF constructor must be called last due to inherited methods
         super().__init__(dt)
@@ -219,16 +224,21 @@ class ModelQuadcopter(Model6DOF):
         spForce_B  = self.a_BwrtLexpB  - self.g_B
         spForce_B2 = self.a_BwrtLexpB2 - self.g_B
         spForce_B  = -self.g_B
-        return spForce_B + self.accelBias + self.accelNoise*randn(3)
+        return spForce_B + self.accelBias + self.accelNoise * randn(3)
 
     def magMeasurementModel(self):
         mag_B = qRot(self.q_toBfromL, self.mag_L)
-        return mag_B + self.magBias + self.magNoise*randn(3)
+        return mag_B + self.magBias + self.magNoise * randn(3)
+
+    def gpsMeasurementModel(self):
+        gpsPos_L = self.r_BwrtLexpL + self.gpsBias + self.gpsNoise * randn(3)
+        return gpsPos_L
 
     def calcMeasurementModel(self):
         self.wMeas = self.gyroMeasurementModel()
         self.aMeas = self.accelMeasurementModel()
         self.mMeas = self.magMeasurementModel()
+        self.rMeas = self.gpsMeasurementModel()
 
     def calcFM(self,t,state,cmd):
         # cmd = motor speeds
