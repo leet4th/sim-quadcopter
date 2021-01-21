@@ -142,6 +142,4 @@ class AttitudeEKF():
         dh = np.vstack( (dhdx_accel, dhdx_mag) )
         return dh
 
-    def get_q_toLfromB(self):
-        return self.state[0:4]
 

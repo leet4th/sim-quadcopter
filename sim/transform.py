@@ -24,8 +24,6 @@ def logq(q):
         n = qv
     return n
 
-def axisAng2quat(k,ang):
-    return np.hstack(( cos(ang/2), k*sin(ang/2) ))
 
 def qConj(q):
     q_out = np.array(q, copy=True)
@@ -103,9 +101,6 @@ def quat2dcm(q):
     ])
     return dcm
 
-
-
-
 def quat2euler321(q):
 
     # Extract components
@@ -164,89 +159,5 @@ def euler3212quat(ang):
     # Ensure unit quaternion
     q = np.array([w,x,y,z])
     q = q / np.sqrt(q.dot(q))
-
     return q
 
-def dcm2quat(dcm):
-    m = dcm.conj().transpose() # This method assumes row-vector and postmultiplication of that vector
-    if m[2, 2] < 0:
-        if m[0, 0] > m[1, 1]:
-            t = 1 + m[0, 0] - m[1, 1] - m[2, 2]
-            q = [m[1, 2]-m[2, 1],  t,  m[0, 1]+m[1, 0],  m[2, 0]+m[0, 2]]
-        else:
-            t = 1 - m[0, 0] + m[1, 1] - m[2, 2]
-            q = [m[2, 0]-m[0, 2],  m[0, 1]+m[1, 0],  t,  m[1, 2]+m[2, 1]]
-    else:
-        if m[0, 0] < -m[1, 1]:
-            t = 1 - m[0, 0] - m[1, 1] + m[2, 2]
-            q = [m[0, 1]-m[1, 0],  m[2, 0]+m[0, 2],  m[1, 2]+m[2, 1],  t]
-        else:
-            t = 1 + m[0, 0] + m[1, 1] + m[2, 2]
-            q = [t,  m[1, 2]-m[2, 1],  m[2, 0]-m[0, 2],  m[0, 1]-m[1, 0]]
-
-    q = np.array(q) #.astype('float64')
-    q *= 0.5 / np.sqrt(t)
-    q = q / np.sqrt(q.dot(q))
-    return q
-
-
-def dcm2quat_old(dcm):
-    """
-    Determine quaternion corresponding to dcm using
-    the stanley method.
-
-    Flips sign to always return shortest path quaterion
-    so w >= 0
-
-    Converts the 3x3 DCM into the quaterion where the
-    first component is the real part
-    """
-
-    tr = np.trace(dcm)
-
-    w = 0.25*(1+tr)
-    x = 0.25*(1+2*dcm[0,0]-tr)
-    y = 0.25*(1+2*dcm[1,1]-tr)
-    z = 0.25*(1+2*dcm[2,2]-tr)
-
-    kMax = np.argmax([w,x,y,z])
-    print(kMax)
-
-    if kMax == 0:
-        w = np.sqrt(w)
-        x = 0.25*(dcm[1,2]-dcm[2,1])/w
-        y = 0.25*(dcm[2,0]-dcm[0,2])/w
-        z = 0.25*(dcm[0,1]-dcm[1,0])/w
-
-    elif kMax == 1:
-        x = np.sqrt(x)
-        w = 0.25*(dcm[1,2]-dcm[2,1])/x
-        if w<0:
-            x = -x
-            w = -w
-        y = 0.25*(dcm[0,1]+dcm[1,0])/x
-        z = 0.25*(dcm[2,0]+dcm[0,2])/x
-
-    elif kMax == 2:
-        y = np.sqrt(y)
-        w = 0.25*(dcm[2,0]-dcm[0,2])/y
-        if w<0:
-            y = -y
-            w = -w
-        x = 0.25*(dcm[0,1]+dcm[1,0])/y
-        z = 0.25*(dcm[1,2]+dcm[2,1])/y
-
-    elif kMax == 3:
-        z = np.sqrt(z)
-        w = 0.25*(dcm[0,1]-dcm[1,0])/z
-        if w<0:
-            z = -z
-            w = -w
-        x = 0.25*(dcm[2,0]+dcm[0,2])/z
-        y = 0.25*(dcm[1,2]+dcm[2,1])/z
-
-    # Ensure unit quaternion
-    q = np.array([w,x,y,z])
-    q = q / np.sqrt( q.dot(q) )
-
-    return q

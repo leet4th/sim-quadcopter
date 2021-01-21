@@ -20,11 +20,11 @@ class Model6DOF():
         self.dt = dt
 
         # Model Constants
-        self.mass= 1.2 # kg
+        self.mass= 100.0
         self.g   = 9.81
-        self.Ixx = 0.0123
-        self.Iyy = 0.0123
-        self.Izz = 0.0123
+        self.Ixx = 10000.0
+        self.Iyy = 10000.0
+        self.Izz = 10000.0
         self.J = np.diag([self.Ixx,self.Iyy,self.Izz])
         self.Jinv = np.linalg.inv(self.J)
 
@@ -82,6 +82,10 @@ class Model6DOF():
 
         Fb,Mb = FM
 
+        #Fx,Fy,Fz,Mx,My,Mz = FM
+        #Fb = np.array([Fx,Fy,Fz])
+        #Mb = np.array([Mx,My,Mz])
+
         self.normalizeQuaternion()
 
         r_BwrtLexpL = self.state[0:3]
@@ -126,6 +130,7 @@ class Model6DOF():
         FM = (self.Fb, self.Mb)
 
         # Integrate
+        #self.state = self.integrator.integrate(t,t+dt,step=True)
         self.integrator.set_integrator('dopri5',
                 atol=1e90, rtol=1e90, nsteps=1,
                 first_step=self.dt, max_step=self.dt)
@@ -173,10 +178,8 @@ class Model6DOF():
         self.v_BwrtLexpB2 = qRot( self.q_toBfromL, self.v_BwrtLexpL )
         self.a_BwrtLexpB2 = qRot( self.q_toBfromL, self.a_BwrtLexpL )
 
-        self.euler321_toBfromL    = quat2euler321( self.q_toBfromL )
+        self.euler321    = quat2euler321( self.q_toBfromL )
         self.g_B         = qRot( self.q_toBfromL, self.g_L )
-
-        self.euler321 = quat2euler321( self.q_toLfromB )
 
         self.calcMeasurementModel()
 
@@ -195,9 +198,9 @@ class ModelQuadcopter(Model6DOF):
     def __init__(self, dt):
 
         # Motor Coefficients
-        self.kF = np.ones(4)*1.076e-5 # N/(rad/s)^2
-        self.kM = np.ones(4)*1.632e-7 # Nm/(rad/s)^2
-        self.L = 0.16 # m
+        self.kF = np.ones(4)
+        self.kM = np.ones(4) * 0.01
+        self.L = 0.5
 
         # Measurement Model Parameters
         self.gyroBias   = np.array([0,0,0])
@@ -210,14 +213,14 @@ class ModelQuadcopter(Model6DOF):
         # Model6DOF constructor must be called last due to inherited methods
         super().__init__(dt)
 
-        self.hoverCmd = np.sqrt( self.mass*self.g/(4*self.kF) )
-
     def gyroMeasurementModel(self):
         return self.wb + self.gyroBias + self.gyroNoise*randn(3)
 
     def accelMeasurementModel(self):
         spForce_B  = self.a_BwrtLexpB  - self.g_B
         spForce_B2 = self.a_BwrtLexpB2 - self.g_B
+        #print(f'{self.a_BwrtLexpB} {self.a_BwrtLexpB2} {self.g_B}')
+        #print(f'{spForce_B}    {spForce_B2}')
         spForce_B  = -self.g_B
         return spForce_B + self.accelBias + self.accelNoise*randn(3)
 
