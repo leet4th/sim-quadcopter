@@ -111,6 +111,8 @@ class Model6DOF():
         ##qDot += 2.0 * (1.0 -q_toLfromB.dot(q_toLfromB)) * q_toLfromB
 
         a_BwrtLexpL = 1/m*qRot(q_toLfromB,Fb) + g_expL
+        #a_BwrtLexpL = 1/m*qRot(q_toLfromB,Fb) + g_expL - g_expL # Cancel gravity term for stationary
+
         wbDot = Jinv.dot( -skew3(wb).dot(J).dot(wb) + Mb)
         qDot = 0.5*skew4L(q_toLfromB)[:,1:].dot(wb)
 
@@ -169,12 +171,10 @@ class Model6DOF():
         self.q_toBfromL  = qConj(self.q_toLfromB)
         self.r_BwrtLexpB = qRot( self.q_toBfromL, self.r_BwrtLexpL )
         self.v_BwrtLexpB = self.v_BwrtLexpL - skew3(self.wb).dot(self.r_BwrtLexpB)
-        #self.a_BwrtLexpB = self.a_BwrtLexpL - skew3(self.wb).dot(self.v_BwrtLexpB)
+        #self.a_BwrtLexpB = self.a_BwrtLexpL - skew3( self.wbDot ).dot( self.v_BwrtLexpB )
 
-        self.a_BwrtLexpB = self.a_BwrtLexpL - skew3( self.wbDot ).dot( self.v_BwrtLexpB )
-
-        self.v_BwrtLexpB2 = qRot( self.q_toBfromL, self.v_BwrtLexpL )
-        self.a_BwrtLexpB2 = qRot( self.q_toBfromL, self.a_BwrtLexpL )
+        #self.v_BwrtLexpB = qRot( self.q_toBfromL, self.v_BwrtLexpL )
+        self.a_BwrtLexpB = qRot( self.q_toBfromL, self.a_BwrtLexpL )
 
         self.euler321_toBfromL    = quat2euler321( self.q_toBfromL )
         self.g_B         = qRot( self.q_toBfromL, self.g_L )
@@ -221,9 +221,9 @@ class ModelQuadcopter(Model6DOF):
         return self.wb + self.gyroBias + self.gyroNoise*randn(3)
 
     def accelMeasurementModel(self):
-        spForce_B  = self.a_BwrtLexpB  - self.g_B
-        spForce_B2 = self.a_BwrtLexpB2 - self.g_B
-        spForce_B  = -self.g_B
+        spForce_B  = self.a_BwrtLexpB - self.g_B  # qRot method
+        #spForce_B  = self.g_B
+
         return spForce_B + self.accelBias + self.accelNoise * randn(3)
 
     def magMeasurementModel(self):
