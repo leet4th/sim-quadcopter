@@ -69,17 +69,20 @@ class AttitudeEKF():
             1.0, # aBx ... 13
             1.0, # aBy ... 14
             1.0, # aBz ... 15
-        ]) * 0.000001
+        ]) * 0.001
 
 
-        self.accelNoise = 1.0
-        self.gyroDriftNoise = 1.0
-        self.accelDriftNoise = 1.0
+        # Process Noise
+        accelNoise = 0.01
+        gyroNoise = 0.01
+        gyroDriftNoise = 0.01
+        accelDriftNoise = 0.01
+        self.setProcessNoise(accelNoise, gyroNoise, gyroDriftNoise, accelDriftNoise)
 
         # Measurment noise (accel, mag)
-        self.sigma_accel = 0.1
-        self.sigma_mag   = 0.1
-        self.R = np.diag( np.hstack(( [self.sigma_accel]*3, [self.sigma_mag]*3 )) )
+        sigma_accel = 0.1
+        sigma_mag   = 0.1
+        self.setMeasurmentNoise(sigma_accel, sigma_mag)
 
         self.z   = np.zeros(6)
         self.hx  = np.zeros(6)
@@ -89,6 +92,18 @@ class AttitudeEKF():
         self.g_L = np.array([0,0,9.81])
         self.mag_L = np.array([1.0, 0, 0])
         self._I = np.eye(len(self.state))
+
+    def setProcessNoise(self, accelNoise, gyroNoise, gyroDriftNoise, accelDriftNoise):
+        self.accelNoise = accelNoise
+        self.gyroNoise = gyroNoise
+        self.gyroDriftNoise = gyroDriftNoise
+        self.accelDriftNoise = accelDriftNoise
+
+    def setMeasurmentNoise(self, accelNoise, magNoise):
+        self.sigma_accel = accelNoise
+        self.sigma_mag   = magNoise
+        self.R = np.diag( np.hstack(( [self.sigma_accel]*3, [self.sigma_mag]*3 )) )
+
 
     def getState(self):
         return np.copy(self.state)
@@ -107,8 +122,8 @@ class AttitudeEKF():
         aMeas = u[3:6]
 
         # Adjust for bias
-        wB = wMeas - gyroBias
-        aB = aMeas - accelBias
+        wB = wMeas #- gyroBias
+        aB = aMeas #- accelBias
 
         # State transition Models
         # Pos L
@@ -143,6 +158,9 @@ class AttitudeEKF():
             qw*np.eye(3) + skew3(qv)
         ))
 
+        # Normalize quaternion
+        self.normalizeQuaternion()
+
         F = np.zeros((16,16))
         F[0:3,3:6] = np.eye(3)
         F[3:6,6:10] = dvdq
@@ -168,6 +186,9 @@ class AttitudeEKF():
             [ -qw*qy,  -qx*qy, 1-qy*qy,  -qz*qy],
             [ -qw*qz,  -qx*qz,  -qy*qz, 1-qz*qz]
         ])
+        Qq *= self.gyroNoise**2 * dt2/4
+
+
         Qgd = self.gyroDriftNoise**2 * dt2
         Qad = self.accelDriftNoise**2 * dt2
 
@@ -175,17 +196,11 @@ class AttitudeEKF():
         Q[0:3,0:3] = Qr
         Q[3:6,3:6] = Qv
         Q[6:10,6:10] = Qq
-        Q[10:13,10:13] = Qgd
+        Q[10:13,10:13] = Qgd * 0
         Q[13:16,13:16] = Qad
-
-        self.Q = Q
-
-
 
         # Update Prediction Covariance
         self.P = F.dot(self.P).dot(F.T) + Q
-
-
 
         # Save
         self.state_prior = np.copy(self.state)
@@ -196,9 +211,12 @@ class AttitudeEKF():
         self.aB = np.copy(aB)
         self.aL = np.copy(aL)
         self.aMeas = np.copy(aMeas)
+        self.wMeas = np.copy(wMeas)
 
 
     def update(self,z):
+
+
 
         # Extract States from State vector
         rL = self.state[0:3]
@@ -211,7 +229,11 @@ class AttitudeEKF():
 
         PHT = self.P.dot(H.T)
         self.S = H.dot(PHT) + self.R
-        self.K = PHT.dot( np.linalg.inv(self.S) )
+        #print(self.S.diagonal())
+        try:
+            self.K = PHT.dot( np.linalg.inv(self.S) )
+        except:
+            breakpoint()
 
         self.hx = self.h()
         self.res = z - self.hx
@@ -221,57 +243,58 @@ class AttitudeEKF():
         # P = (I-KH)P(I-KH)' + KRK' is more numerically stable
         # and works for non-optimal K vs the equation
         # P = (I-KH)P usually seen in the literature.
-        #I_KH = self._I - self.K.dot(H)
-        #self.P = np.dot(I_KH,self.P).dot(I_KH.T) + np.dot(self.K, self.R).dot(self.K.T)
+        I_KH = self._I - self.K.dot(H)
+        self.P = np.dot(I_KH,self.P).dot(I_KH.T) + np.dot(self.K, self.R).dot(self.K.T)
         #self.P = I_KH.dot(self.P)
 
-        self.P = self.P - self.K.dot(self.S).dot(self.K.T)
+        #self.P = self.P - self.K.dot(self.S).dot(self.K.T)
 
         # Normalize quaternion
-        q = self.state[0:4]
-        qMag = np.sqrt(q.dot(q))
-        J = q * q.reshape(-1,1) / qMag
-        self.P = np.dot(J, self.P).dot(J.T)
-        self.state[0:4] = q/qMag
+        self.normalizeQuaternion()
 
         # save measurement and posterior state
         self.z = deepcopy(z)
         self.state_post = self.state.copy()
         self.P_post = self.P.copy()
 
+    def normalizeQuaternion(self):
+        # Normalize quaternion
+        q = self.state[6:10]
+        qMag = np.sqrt(q.dot(q))
+        self.state[6:10] = q/qMag
+        J = q * q.reshape(-1,1) / qMag
+        self.P[6:10,6:10]= np.dot(J, self.P[6:10,6:10]).dot(J.T)
+
+
 
     def h(self):
-        q = self.state[0:4] # q_toLfromB
+        q_toLfromB = self.state[6:10] # q_toLfromB
 
         # Neglicting linear acceleration
-        hx_accel = -qRot(qConj(q), self.g_L)
-        hx_mag   =  qRot(qConj(q), self.mag_L)
+        hx_accel = -qRot(qConj(q_toLfromB), self.g_L)
+        hx_mag   =  qRot(qConj(q_toLfromB), self.mag_L)
 
         hx = np.hstack( (hx_accel, hx_mag) )
         return hx
 
     def dhdx(self):
-        ax,ay,az = self.g_L
+        g = self.g_L[2]
         bx,by,bz = self.mag_L
-        qw,qx,qy,qz = self.state[0:4]
+        qw,qx,qy,qz = self.state[6:10]
 
-        dhdx_accel = np.array([
-            [ 2*az*qy, -2*az*qz,  2*az*qw, -2*az*qx],
-            [-2*az*qx, -2*az*qw, -2*az*qz, -2*az*qy],
-            [-2*az*qw,  2*az*qx,  2*az*qy, -2*az*qz]
+        dhdx = np.array([
+            [0, 0, 0, 0, 0, 0,    2*g*qy,  -2*g*qz,   2*g*qw,  -2*g*qx, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,   -2*g*qx,  -2*g*qw,  -2*g*qz,  -2*g*qy, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,   -2*g*qw,   2*g*qx,   2*g*qy,  -2*g*qz, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,   2*bx*qw,  2*bx*qx, -2*bx*qy, -2*bx*qz, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,  -2*bx*qz,  2*bx*qy,  2*bx*qx, -2*bx*qw, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,   2*bx*qy,  2*bx*qz,  2*bx*qw,  2*bx*qx, 0, 0, 0, 0, 0, 0],
         ])
 
-        dhdx_mag = np.array([
-            [ 2*bx*qw, 2*bx*qx, -2*bx*qy, -2*bx*qz],
-            [-2*bx*qz, 2*bx*qy,  2*bx*qx, -2*bx*qw],
-            [ 2*bx*qy, 2*bx*qz,  2*bx*qw,  2*bx*qx]
-        ])
-
-        dh = np.vstack( (dhdx_accel, dhdx_mag) )
-        return dh
+        return dhdx
 
     def get_q_toLfromB(self):
-        return self.state[0:4]
+        return self.state[6:10]
 
 
 

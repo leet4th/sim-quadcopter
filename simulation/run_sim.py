@@ -22,21 +22,37 @@ wantAnimation = False
 # Setup time
 dt = 0.001 # sec
 tStart = 0.0
-tEnd = 1
+tEnd = 2.36
 
 nSteps = int((tEnd-tStart)/dt) + 1
 time,dt = np.linspace(tStart, tEnd, num=nSteps, retstep=True)
 
 # Setup sim model
 model = ModelQuadcopter(dt)
-# Noise
-model.gyroNoise  *= 1
-model.accelNoise *= 1
-model.magNoise   *= 1
+# Sensor Models
+model.gyroBias   *= 0
+model.gyroNoise  *= 0
+model.accelBias  *= 0
+model.accelNoise *= 0
+model.magBias    *= 0
+model.magNoise   *= 0
+model.gpsBias    *= 0
+model.gpsNoise   *= 0
 
 
 # Setup EKF
 ekf = AttitudeEKF(dt)
+# Process Noise
+accelNoise      = 0.0
+gyroNoise       = 0.0
+gyroDriftNoise  = 0.0
+accelDriftNoise = 0.0
+ekf.setProcessNoise(accelNoise, gyroNoise, gyroDriftNoise, accelDriftNoise)
+
+# Measurment noise (accel, mag)
+sigma_accel = 10
+sigma_mag   = 0.1
+ekf.setMeasurmentNoise(sigma_accel, sigma_mag)
 
 # Control
 control = ControlLoop(dt)
@@ -95,7 +111,10 @@ ekfVarList = [
     'P',
     'S',
     'aL',
+    'wMeas',
     'aMeas',
+    'wB',
+    'aB',
 ]
 ekfData = ModelOutput(ekfVarList,ekf)
 
@@ -120,7 +139,7 @@ for tk in time:
     ekf_u = np.hstack( (wMeas, aMeas) )
 
     ekf.predict(ekf_u)
-    #ekf.update(zMeas)
+    ekf.update(zMeas)
 
     # Pass through measurments not yet implemented
     ekf.wb = model.wb
