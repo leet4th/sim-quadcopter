@@ -20,16 +20,26 @@ class ControlLoop:
         self.q_toBfromL = np.array([1.0,0,0,0])
         self.cmd = np.zeros(4)
 
-    def update(self,nav, t):
+    def readNavData(self, navData):
+        self.rL = navData[0:3]
+        self.vL = navData[3:6]
+        self.aL = navData[6:9]
+        self.q_toLfromB = navData[9:13]
+        self.wB = navData[13:16]
+        self.aB = navData[16:19]
 
-        self.attitudeLoop(nav, t)
-        self.rateLoop(nav)
+
+    def update(self,navData, t):
+
+        self.readNavData(navData)
+        self.attitudeLoop(t)
+        self.rateLoop()
         self.mixer()
 
         return self.actCmd
 
 
-    def attitudeLoop(self, nav, t):
+    def attitudeLoop(self,t):
         # Control inputs:
         #     accel_cmd
         #     yaw_cmd
@@ -37,10 +47,7 @@ class ControlLoop:
 
         accel_cmd = self.accel_cmd
         yaw_cmd = self.yaw_cmd
-        try:
-            q_toLfromB = nav.q_toLfromB
-        except:
-            q_toLfromB = nav.get_q_toLfromB()
+        q_toLfromB = self.q_toLfromB
 
         # Get body z vector expressed in L from
         R_toBfromL = quat2dcm( qConj(q_toLfromB ))
@@ -127,11 +134,12 @@ class ControlLoop:
             pass
 
 
-    def rateLoop(self, nav):
-        self.rateErr = self.rateCmd - nav.wb
+    def rateLoop(self):
+        wB = self.wB
+        self.rateErr = self.rateCmd - wB
         Kp = 50.0
         Kd = 0.1*Kp
-        self.bodyCmd = Kp*self.rateErr + Kd*self.rateErr #nav.wb
+        self.bodyCmd = Kp*self.rateErr + Kd*self.rateErr #wB
 
     def mixer(self):
         maxThrottle = 1000.0

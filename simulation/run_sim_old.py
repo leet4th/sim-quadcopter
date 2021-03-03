@@ -17,12 +17,12 @@ DEG2RAD = 1/RAD2DEG
 
 showProgress  = True
 showPlots     = True
-wantAnimation = True
+wantAnimation = False
 
 # Setup time
 dt = 0.001 # sec
 tStart = 0.0
-tEnd = 15.0
+tEnd = 2.36
 
 nSteps = int((tEnd-tStart)/dt) + 1
 time,dt = np.linspace(tStart, tEnd, num=nSteps, retstep=True)
@@ -30,19 +30,29 @@ time,dt = np.linspace(tStart, tEnd, num=nSteps, retstep=True)
 # Setup sim model
 model = ModelQuadcopter(dt)
 # Sensor Models
-model.gyroBias   *= 1
-model.gyroNoise  *= 1
-model.accelBias  *= 1
-model.accelNoise *= 1
-model.magBias    *= 1
-model.magNoise   *= 1
-model.gpsBias    *= 1
-model.gpsNoise   *= 1
+model.gyroBias   *= 0
+model.gyroNoise  *= 0
+model.accelBias  *= 0
+model.accelNoise *= 0
+model.magBias    *= 0
+model.magNoise   *= 0
+model.gpsBias    *= 0
+model.gpsNoise   *= 0
 
 
 # Setup EKF
 ekf = AttitudeEKF(dt)
+# Process Noise
+accelNoise      = 0.0
+gyroNoise       = 0.0
+gyroDriftNoise  = 0.0
+accelDriftNoise = 0.0
+ekf.setProcessNoise(accelNoise, gyroNoise, gyroDriftNoise, accelDriftNoise)
 
+# Measurment noise (accel, mag)
+sigma_accel = 10
+sigma_mag   = 0.1
+ekf.setMeasurmentNoise(sigma_accel, sigma_mag)
 
 # Control
 control = ControlLoop(dt)
@@ -53,7 +63,7 @@ wStart = np.array([0, 0, 0]) * DEG2RAD
 
 model.state[6:10] = qStart
 model.state[10:13] = wStart
-#ekf.state[6:10] = qStart
+ekf.state[6:10] = qStart
 
 # Setup model outputs
 modelVarList = [
@@ -123,28 +133,27 @@ for tk in time:
     wMeas = model.wMeas
     aMeas = model.aMeas
     mMeas = model.mMeas
-    rMeas = model.rMeas
 
     # EKF
-    zMeas = np.hstack( (rMeas, aMeas, mMeas) )
+    zMeas = np.hstack( (aMeas, mMeas) )
     ekf_u = np.hstack( (wMeas, aMeas) )
-    navData = ekf.updateNav(ekf_u, zMeas)
+
+    ekf.predict(ekf_u)
+    ekf.update(zMeas)
+
+    # Pass through measurments not yet implemented
+    ekf.wb = model.wb
 
     # Control Loop
-    if tk >= 1 and tk <= 5:
-        print('Control 1')
-        control.accel_cmd = np.array([1.,0.,1.])
-        control.yaw_cmd = 0.0 * DEG2RAD
-    #elif tk >= 1 and tk <= 10:
-    #    print('Control 2')
+    #if tk <= 1:
+    #    control.accel_cmd = np.array([1.,1.,1.])
+    #    control.yaw_cmd = 0.0 * DEG2RAD
+    #elif tk >= 5:
     #    control.accel_cmd = np.array([0,0,1.])
     #    control.yaw_cmd = 45.0 * DEG2RAD
-    else:
-        print('Control 0')
-        control.accel_cmd = np.array([0.,0.,1.])
-        control.yaw_cmd = 0.0 * DEG2RAD
 
-    cmd = control.update(navData,tk)
+    cmd = control.update(ekf,tk)
+    cmd = np.array([0]*4)
 
     # Update sim models
     model.update(tk,dt,cmd)
@@ -164,6 +173,8 @@ ekfData.process()
 ekfData.data['r_BwrtLexpL'] = ekfData.data['state'][0:3,:]
 ekfData.data['v_BwrtLexpL'] = ekfData.data['state'][3:6,:]
 ekfData.data['q_toLfromB'] = ekfData.data['state'][6:10,:]
+ekfData.data['gyroBias'] = ekfData.data['state'][10:13,:]
+ekfData.data['accelBias'] = ekfData.data['state'][13:16,:]
 ekfData.data['a_BwrtLexpL'] = ekfData.data['aL'][:]
 
 # Plots
@@ -183,7 +194,7 @@ if wantAnimation:
     while(True):
         #for q_toBfromL in modelData.data['q_toBfromL'][:,::100].T:
         #for q_toBfromL in ekfData.data['state'][6:10,::100].T:
-        for q_toBfromL in ekfData.data['state'][6:10,::100].T:
+        for q_toBfromL in ekfData.data['state'][6:10,:].T:
             pv.clock.tick(int(model.dt*50*1000))
 
             # sys update attitude

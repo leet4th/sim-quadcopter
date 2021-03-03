@@ -203,14 +203,14 @@ class ModelQuadcopter(Model6DOF):
         self.L = 0.16 # m
 
         # Measurement Model Parameters
-        self.gyroBias   = np.array([0,0,0])
-        self.gyroNoise  = np.array([1.,1.,1.]) * np.sqrt(30.0*DEG2RAD)/3
-        self.accelBias  = np.array([0,0,0])
-        self.accelNoise = np.array([1.,1.,1.]) * np.sqrt(0.4)/3
-        self.magBias    = np.array([0,0,0])
-        self.magNoise   = np.array([1.,1.,1.]) * np.sqrt(0.005)/3
-        self.gpsBias    = np.array([0,0,0])
-        self.gpsNoise   = np.array([1.,1.,1.]) * np.sqrt(1.8)/3
+        self.gyroBias   = np.ones(3) * 0
+        self.gyroNoise  = np.ones(3) * np.sqrt(30.0*DEG2RAD)/3
+        self.accelBias  = np.ones(3) * 0
+        self.accelNoise = np.ones(3) * np.sqrt(0.4)/3
+        self.magBias    = np.ones(3) * 0
+        self.magNoise   = np.ones(3) * np.sqrt(0.005)/3
+        self.gpsBias    = np.ones(3) * 0
+        self.gpsNoise   = np.ones(3) * np.sqrt(1.8)/3
 
         # Model6DOF constructor must be called last due to inherited methods
         super().__init__(dt)

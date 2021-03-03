@@ -71,6 +71,31 @@ def qRot(q,v):
     vout = skew4L(q).dot(skew4R(qPrime)).dot(v)
     return vout[1:]
 
+def dRotdq(q,v):
+    qw,qx,qy,qz = q
+    vx,vy,vz = v
+
+    dRdq = np.array([
+        [2*qw*vx + 2*qy*vz - 2*qz*vy,  2*qx*vx + 2*qy*vy + 2*qz*vz,  2*qw*vz + 2*qx*vy - 2*qy*vx, -2*qw*vy + 2*qx*vz - 2*qz*vx],
+        [2*qw*vy - 2*qx*vz + 2*qz*vx, -2*qw*vz - 2*qx*vy + 2*qy*vx,  2*qx*vx + 2*qy*vy + 2*qz*vz,  2*qw*vx + 2*qy*vz - 2*qz*vy],
+        [2*qw*vz + 2*qx*vy - 2*qy*vx,  2*qw*vy - 2*qx*vz + 2*qz*vx, -2*qw*vx - 2*qy*vz + 2*qz*vy,  2*qx*vx + 2*qy*vy + 2*qz*vz]
+    ])
+
+    return dRdq
+
+def dVdq(q,v):
+    qw,qx,qy,qz = q
+    vx,vy,vz = v
+
+    dv = np.array([
+        [ 2*vx*qw + 2*vy*qz - 2*vz*qy, 2*vx*qx + 2*vy*qy + 2*vz*qz, -2*vx*qy + 2*vy*qx - 2*vz*qw, -2*vx*qz + 2*vy*qw + 2*vz*qx],
+        [-2*vx*qz + 2*vy*qw + 2*vz*qx, 2*vx*qy - 2*vy*qx + 2*vz*qw,  2*vx*qx + 2*vy*qy + 2*vz*qz, -2*vx*qw - 2*vy*qz + 2*vz*qy],
+        [ 2*vx*qy - 2*vy*qx + 2*vz*qw, 2*vx*qz - 2*vy*qw - 2*vz*qx,  2*vx*qw + 2*vy*qz - 2*vz*qy,  2*vx*qx + 2*vy*qy + 2*vz*qz],
+    ])
+
+    return dv
+
+
 
 def quat2dcm(q):
     """
