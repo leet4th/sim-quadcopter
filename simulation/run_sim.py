@@ -17,15 +17,19 @@ DEG2RAD = 1/RAD2DEG
 
 showProgress  = True
 showPlots     = True
-wantAnimation = True
+wantAnimation = False
 
 # Setup time
-dt = 0.001 # sec
 tStart = 0.0
 tEnd = 15.0
 
-nSteps = int((tEnd-tStart)/dt) + 1
-time,dt = np.linspace(tStart, tEnd, num=nSteps, retstep=True)
+# Time step
+dt         = 0.001 # sec
+dt_ekf     = 0.01  # sec
+dt_control = 0.01  # sec
+
+tmod_ekf = int(dt_ekf/dt)
+tmod_control = int(dt_control/dt)
 
 # Setup sim model
 model = ModelQuadcopter(dt)
@@ -39,13 +43,11 @@ model.magNoise   *= 1
 model.gpsBias    *= 1
 model.gpsNoise   *= 1
 
-
 # Setup EKF
-ekf = AttitudeEKF(dt)
-
+ekf = AttitudeEKF(dt_ekf)
 
 # Control
-control = ControlLoop(dt)
+control = ControlLoop(dt_control)
 
 # Starting Conditions
 qStart = euler3212quat(np.array([0,0,0])*DEG2RAD)
@@ -108,55 +110,55 @@ ekfVarList = [
 ]
 ekfData = ModelOutput(ekfVarList,ekf)
 
+k = 0
+tk = tStart
+time = []
+nProg = 10
+progStep = int(1/nProg*100)
+progress = 0
+tmod_progress = int(tEnd/10/dt)
+while tk <= tEnd:
 
-
-lastProgress = -1
-for tk in time:
-
-
-    progress = int(tk/tEnd*100)
-    if progress % 10 == 0 and lastProgress != progress and showProgress:
-        lastProgress = progress
+    if (k % tmod_progress) == 0 and showProgress:
         print(f'\t{progress}%')
+        progress += progStep
 
-    # Measurements
-    wMeas = model.wMeas
-    aMeas = model.aMeas
-    mMeas = model.mMeas
-    rMeas = model.rMeas
 
-    # EKF
-    zMeas = np.hstack( (rMeas, aMeas, mMeas) )
-    ekf_u = np.hstack( (wMeas, aMeas) )
-    navData = ekf.updateNav(ekf_u, zMeas)
+    # Nav
+    if (k % tmod_ekf) == 0:
+        # Measurements
+        wMeas = model.wMeas
+        aMeas = model.aMeas
+        mMeas = model.mMeas
+        rMeas = model.rMeas
+
+        # EKF
+        zMeas = np.hstack( (rMeas, aMeas, mMeas) )
+        ekf_u = np.hstack( (wMeas, aMeas) )
+        navData = ekf.updateNav(ekf_u, zMeas)
 
     # Control Loop
-    if tk >= 1 and tk <= 5:
-        print('Control 1')
+    if (k % tmod_control) == 0:
         control.accel_cmd = np.array([1.,0.,1.])
         control.yaw_cmd = 0.0 * DEG2RAD
-    #elif tk >= 1 and tk <= 10:
-    #    print('Control 2')
-    #    control.accel_cmd = np.array([0,0,1.])
-    #    control.yaw_cmd = 45.0 * DEG2RAD
-    else:
-        print('Control 0')
-        control.accel_cmd = np.array([0.,0.,1.])
-        control.yaw_cmd = 0.0 * DEG2RAD
-
-    cmd = control.update(navData,tk)
+        cmd = control.update(navData,tk)
 
     # Update sim models
     model.update(tk,dt,cmd)
 
     # Store data
+    time.append(tk)
     modelData.append()
     controlData.append()
     ekfData.append()
 
+    # Update for next iteration
+    k += 1
+    tk += dt
+
 
 # Post processing
-time = np.asarray(time).T
+time = np.asarray(time)
 modelData.process()
 controlData.process()
 ekfData.process()

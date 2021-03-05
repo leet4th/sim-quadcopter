@@ -74,7 +74,6 @@ class AttitudeEKF():
         self.mag_L = np.array([1.0, 0, 0])
         self._I = np.eye(len(self.state))
 
-
     def setProcessNoise(self, std_accel, std_gyro):
         self.sigSq_accel = std_accel**2
         self.sigSq_gyro = std_gyro**2
@@ -197,9 +196,6 @@ class AttitudeEKF():
 
         return hx
 
-
-
-
     def calcMeasurmentModelJac(self):
         g_L = self.g_L
         mag_L = self.mag_L
@@ -212,7 +208,6 @@ class AttitudeEKF():
         ])
 
         return dhdx
-
 
     def predict(self,u):
 
@@ -246,7 +241,6 @@ class AttitudeEKF():
         self.wMeas = np.copy(wMeas)
         self.wB = np.copy(wB)
         self.aB = np.copy(aB)
-
 
     def update(self,z):
 
@@ -315,15 +309,6 @@ class AttitudeEKF():
             wB,
             aB,
         ))
-
-        #navData = {
-        #        'rL':rL,
-        #        'vL':vL,
-        #        'aL':aL,
-        #        'q_toLfromB':q_toLfromB,
-        #        'wB':wB,
-        #        'aB':aB,
-        #}
 
         return navData
 

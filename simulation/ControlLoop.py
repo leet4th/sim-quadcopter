@@ -68,7 +68,7 @@ class ControlLoop:
             rotAxis /= np.sqrt( rotAxisMagSq )
 
         # Limit max tilt angle
-        tiltMax = 10*DEG2RAD
+        tiltMax = 2*DEG2RAD
         if np.abs(tilt) > tiltMax:
             tilt = np.sign(tilt)*tiltMax
             qRed_err = axisAng2quat(rotAxis, tilt) # multiplicative error term (toCfromB)
