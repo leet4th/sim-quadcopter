@@ -2,6 +2,7 @@
 
 import numpy as np
 from math import radians, sin, cos, acos
+import pyproj
 
 
 def expq(n):
@@ -275,3 +276,27 @@ def dcm2quat_old(dcm):
     q = q / np.sqrt( q.dot(q) )
 
     return q
+
+
+def ecef2lla(pos):
+    # perform ecef -> lat,lon,alt transform
+    transformer = pyproj.Transformer.from_crs(
+        {"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'},
+        {"proj":'latlong', "ellps":'WGS84', "datum":'WGS84'},
+        )
+    lon,lat,alt = transformer.transform(pos[0],pos[1],pos[2],
+                                        radians=False)
+    return np.array([lat,lon,alt])
+
+def lla2ecef(lla):
+    # perform lat,lon,alt -> ecef transform
+    transformer = pyproj.Transformer.from_crs(
+        {"proj":'latlong', "ellps":'WGS84', "datum":'WGS84'},
+        {"proj":'geocent', "ellps":'WGS84', "datum":'WGS84'},
+        )
+    # lla (lat, lon, alt)
+    # transform() expects lon, lat, alt
+    x,y,z = transformer.transform(lla[1],lla[0],lla[2],
+                                  radians=False)
+    return np.array([x,y,z])
+
