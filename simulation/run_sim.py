@@ -19,14 +19,14 @@ showProgress  = True
 showPlots     = True
 wantAnimation = False
 
-# Setup time
-tStart = 0.0
-tEnd = 15.0
-
 # Time step
 dt         = 0.001 # sec
 dt_ekf     = 0.01  # sec
 dt_control = 0.01  # sec
+
+# Setup time
+tStart = 0.0
+tEnd = 15
 
 tmod_ekf = int(dt_ekf/dt)
 tmod_control = int(dt_control/dt)

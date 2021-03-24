@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
+np.set_printoptions(linewidth=500)
 from copy import deepcopy
-from transform import *
+from transform import qRot, expq, skew4L, skew4R, dRotdq, dVdq, qConj
 
 from IPython import embed as breakpoint
 
@@ -132,7 +133,7 @@ class AttitudeEKF():
         q_toLfromB = self.state[6:10]
 
         if want_1stOrderApprox:
-            dfdx_q = eye(4) + t/2*skew4Right(wB)
+            dfdx_q = np.eye(4) + t/2*skew4R(wB)
         else:
             dfdx_q = skew4R( expq( 0.5*t/2*wB ) )
 
@@ -278,7 +279,7 @@ class AttitudeEKF():
 
     def normalizeQuaternion(self):
         # Normalize quaternion
-        q = self.state[6:10]
+        q = np.array( self.state[6:10] )
         qMag = np.sqrt(q.dot(q))
         self.state[6:10] = q/qMag
         J = q * q.reshape(-1,1) / qMag
@@ -313,6 +314,38 @@ class AttitudeEKF():
         return navData
 
 
+if __name__ == "__main__":
 
+    def print_state(ekf):
+        print("state")
+        for each in ekf.state:
+            print(each)
+        print()
 
+    dt = 0.1;
 
+    aMeas = np.array([0,0,9.81])
+    wMeas = np.array([0,0,0])
+    mMeas = np.array([5,0,0])
+    gpsMeas = np.array([33.3,-111.0, 0])
+
+    sig_gps   = 1.0
+    sig_accel = 1.0
+    sig_gyro  = 1.0
+    sig_mag   = 1.0
+
+    u = np.hstack( (wMeas, aMeas) )
+    z = np.hstack( (gpsMeas, aMeas, mMeas) )
+
+    ekf = AttitudeEKF(dt)
+    ekf.state = np.array([0,1,2,3,4,5,6,7,8,9])
+    ekf.setProcessNoise(sig_accel, sig_gyro)
+    ekf.setMeasurmentNoise(sig_gps, sig_accel, sig_mag)
+
+    print_state(ekf)
+    ekf.predict(u)
+    print_state(ekf)
+    ekf.update(z)
+    print_state(ekf)
+    print("P")
+    print(ekf.P)
