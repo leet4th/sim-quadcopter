@@ -7,6 +7,8 @@ from copy import deepcopy
 from math import radians, sin, cos, acos
 import matplotlib.pyplot as plt
 
+from geodetic import GeodeticModel
+
 from transform import *
 
 from IPython import embed as breakpoint
@@ -16,11 +18,14 @@ DEG2RAD = 1/RAD2DEG
 
 
 class Model6DOF():
-    def __init__(self, dt):
+    def __init__(self, dt, lla0):
 
         # Time
         tStart = 0.0
         self.dt = dt
+
+        # Geodetic Model
+        self.gm = GeodeticModel(lla0)
 
         # Model Constants
         self.mass= 1.2 # kg
@@ -42,10 +47,10 @@ class Model6DOF():
         self.state[3]  = 0.0 # vx
         self.state[4]  = 0.0 # vy
         self.state[5]  = 0.0 # vz
-        self.state[6]  = 1.0 # qw
-        self.state[7]  = 0.0 # qx
-        self.state[8]  = 0.0 # qy
-        self.state[9]  = 0.0 # qz
+        self.state[6]  = 1.0 # q_toLformB - qw
+        self.state[7]  = 0.0 # q_toLformB - qx
+        self.state[8]  = 0.0 # q_toLformB - qy
+        self.state[9]  = 0.0 # q_toLformB - qz
         self.state[10] = 0.0 # wx
         self.state[11] = 0.0 # wy
         self.state[12] = 0.0 # wz
@@ -195,7 +200,7 @@ class Model6DOF():
         self.state[6:10] = q
 
 class ModelQuadcopter(Model6DOF):
-    def __init__(self, dt):
+    def __init__(self, dt, lla0):
 
         # Motor Coefficients
         self.kF = np.ones(4)*1.076e-5 # N/(rad/s)^2
@@ -213,7 +218,7 @@ class ModelQuadcopter(Model6DOF):
         self.gpsNoise   = np.ones(3) * np.sqrt(1.8)/3
 
         # Model6DOF constructor must be called last due to inherited methods
-        super().__init__(dt)
+        super().__init__(dt,lla0)
 
         self.hoverCmd = np.sqrt( self.mass*self.g/(4*self.kF) )
 
@@ -231,8 +236,9 @@ class ModelQuadcopter(Model6DOF):
         return mag_B + self.magBias + self.magNoise * randn(3)
 
     def gpsMeasurementModel(self):
-        gpsPos_L = self.r_BwrtLexpL + self.gpsBias + self.gpsNoise * randn(3)
-        return gpsPos_L
+        # Convert ECEF to LLA
+        gps_ned = self.r_BwrtLexpL + self.gpsBias + self.gpsNoise * randn(3)
+        return self.gm.ned2geodetic(gps_ned)
 
     def calcMeasurementModel(self):
         self.wMeas = self.gyroMeasurementModel()

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from Model6DOF import Model6DOF, ModelOutput, ModelQuadcopter
 from EKF import AttitudeEKF
 from ControlLoop import ControlLoop
-from transform import *
+from transform import euler3212quat, ecef2lla, lla2ecef
 from Plots import generate_plots
 
 from IPython import embed as breakpoint
@@ -26,22 +26,29 @@ dt_control = 0.01  # sec
 
 # Setup time
 tStart = 0.0
-tEnd = 15
+tEnd = 5
 
 tmod_ekf = int(dt_ekf/dt)
 tmod_control = int(dt_control/dt)
 
+# Initial LLA
+lat = 33.4484 * DEG2RAD
+lon = -110.0 * DEG2RAD
+alt = 430. # m
+lla0 = np.array([lat,lon,alt])
+
 # Setup sim model
-model = ModelQuadcopter(dt)
+model = ModelQuadcopter(dt, lla0)
+
 # Sensor Models
-model.gyroBias   *= 1
-model.gyroNoise  *= 1
-model.accelBias  *= 1
-model.accelNoise *= 1
-model.magBias    *= 1
-model.magNoise   *= 1
-model.gpsBias    *= 1
-model.gpsNoise   *= 1
+model.gyroBias   *= .1
+model.gyroNoise  *= .1
+model.accelBias  *= .1
+model.accelNoise *= .1
+model.magBias    *= .1
+model.magNoise   *= .1
+model.gpsBias    *= .1
+model.gpsNoise   *= .1
 
 # Setup EKF
 ekf = AttitudeEKF(dt_ekf)
@@ -132,8 +139,11 @@ while tk <= tEnd:
         mMeas = model.mMeas
         rMeas = model.rMeas
 
+        # Convert gps lla to ned for ekf
+        nedMeas = model.gm.geodetic2ned(rMeas)
+
         # EKF
-        zMeas = np.hstack( (rMeas, aMeas, mMeas) )
+        zMeas = np.hstack( (nedMeas, aMeas, mMeas) )
         ekf_u = np.hstack( (wMeas, aMeas) )
         navData = ekf.updateNav(ekf_u, zMeas)
 
